@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Outgoing Documents Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <h1>DTS Outgoing</h1>
+      <p class="desc">Record & track documents</p>
+      <button class="nav-btn" id="btnForward">Forward Document</button>
+      <button class="nav-btn" id="btnReceive">Receive Document</button>
+      <button class="nav-btn" id="btnTrack">Track Document</button>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <!-- Forward Form -->
+      <section id="forwardSection" class="section hidden">
+        <h2>Forward Document</h2>
+        <form id="forwardForm" novalidate>
+          <label>DTS Tracking No.<input type="text" id="dtsNo"></label>
+          <label>From/Office<input type="text" id="fromOffice"></label>
+          <label>Document Details<textarea id="details"></textarea></label>
+          <label>Received By<input type="text" id="receivedBy"></label>
+          <label>To/Office<input type="text" id="toOffice"></label>
+          <label>Date Forwarded<input type="date" id="dateForwarded"></label>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Save Record</button>
+            <button type="reset" class="btn-ghost">Reset</button>
+          </div>
+        </form>
+        <div id="formMsg" class="msg"></div>
+      </section>
+
+      <!-- Receive Form (DTS field removed) -->
+      <section id="receiveSection" class="section hidden">
+        <h2>Receive Document</h2>
+        <form id="receiveForm" novalidate>
+          <!-- DTS Tracking No. removed per request -->
+          <label>From/Office<input type="text" id="rxFromOffice"></label>
+          <label>Document Details<textarea id="rxDetails"></textarea></label>
+          <label>Received By<input type="text" id="rxReceivedBy"></label>
+          <label>Date Received<input type="date" id="rxDate"></label>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Save Received</button>
+            <button type="reset" class="btn-ghost">Reset</button>
+          </div>
+        </form>
+        <div id="receiveMsg" class="msg"></div>
+      </section>
+
+      <!-- Track/Search -->
+      <section id="trackSection" class="section hidden">
+        <h2>Track Document</h2>
+
+        <div class="filters">
+          <input type="text" id="searchDts" placeholder="Search by DTS No.">
+          <input type="text" id="searchDetails" placeholder="Search by Document Details">
+          <input type="date" id="dateFrom">
+          <input type="date" id="dateTo">
+
+          <button id="clearFilters" class="btn-ghost">Clear</button>
+          <button id="toggleView" class="btn-ghost">View Received Documents</button>
+          <button id="printResults" class="btn-primary">Print</button>
+
+          <!-- Export + Import -->
+          <select id="exportFormat" class="select">
+            <option value="csv">CSV (.csv)</option>
+            <option value="excel">Excel (.xls)</option>
+            <option value="word">Word (.doc)</option>
+            <option value="pdf">PDF</option>
+          </select>
+          <button id="exportBtn" class="btn-ghost">Export</button>
+
+          <label class="btn-ghost file-label">
+            Import CSV
+            <input type="file" id="importCsv" accept=".csv" hidden>
+          </label>
+
+          <!-- Bulk delete -->
+          <button id="deleteSelected" class="btn-danger no-print" disabled>Delete Selected</button>
+        </div>
+
+        <div class="table-container">
+          <table id="resultsTable">
+            <thead>
+              <tr>
+                <th class="no-print select-col">
+                  <input type="checkbox" id="selectAll" aria-label="Select all rows">
+                </th>
+                <th>DTS Tracking No.</th>
+                <th>From/Office</th>
+                <th>Document Details</th>
+                <th>Received By</th>
+                <th id="thToOffice">To/Office</th>
+                <th id="thDate">Date Forwarded</th>
+                <th class="no-print">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="editTitle">Edit Document</h3>
+        <button id="closeEdit" class="icon-btn" aria-label="Close">&times;</button>
+      </div>
+
+      <form id="editForm" class="modal-body" novalidate>
+        <input type="hidden" id="editId" />
+        <input type="hidden" id="editKind" />
+        <label>DTS Tracking No.<input type="text" id="editDtsNo"></label>
+        <label>From/Office<input type="text" id="editFromOffice"></label>
+        <label>Document Details<textarea id="editDetails"></textarea></label>
+        <label>Received By<input type="text" id="editReceivedBy"></label>
+        <label id="labelToOffice">To/Office<input type="text" id="editToOffice"></label>
+        <label id="labelDate">Date<input type="date" id="editDate"></label>
+        <div class="form-actions">
+          <button type="button" class="btn-ghost" id="cancelEdit">Cancel</button>
+          <button type="submit" class="btn-primary">Save Changes</button>
+        </div>
+        <div id="editMsg" class="msg"></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
