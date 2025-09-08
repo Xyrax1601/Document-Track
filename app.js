@@ -1,21 +1,20 @@
+/* ========= Storage & IDs ========= */
 const STORAGE_KEY = "outgoingDocs"; // unified storage for both forwarded & received
 
-/* ========= Storage & IDs ========= */
 function uid() {
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 function saveDocs(docs) { localStorage.setItem(STORAGE_KEY, JSON.stringify(docs)); }
 function getDocsRaw() { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
 
-/* Migrate & normalize: ensure id, kind, date field */
+/* Ensure id/kind/date fields exist for older data */
 function getDocs() {
   const arr = getDocsRaw();
   let changed = false;
   const out = arr.map(d => {
     const nd = { ...d };
     if (!nd.id) { nd.id = uid(); changed = true; }
-    // If kind not set, assume old data = "forward"
-    if (!nd.kind) {
+    if (!nd.kind) { // assume old data = forward
       nd.kind = "forward";
       if (nd.dateForwarded && !nd.date) nd.date = nd.dateForwarded;
       changed = true;
@@ -27,29 +26,23 @@ function getDocs() {
   return out;
 }
 
-/* ID helpers */
 function genUniqueId(existingSet) {
   let id = uid();
   while (existingSet.has(id)) id = uid();
   return id;
 }
 
-/* Add record with collision-proof ID */
 function addDoc(doc) {
   const docs = getDocs();
-  const existingIds = new Set(docs.map(d => d.id));
-  const safe = { ...doc, id: doc.id && !existingIds.has(doc.id) ? doc.id : genUniqueId(existingIds) };
+  const ids = new Set(docs.map(d => d.id));
+  const safe = { ...doc, id: doc.id && !ids.has(doc.id) ? doc.id : genUniqueId(ids) };
   docs.push(safe);
   saveDocs(docs);
 }
-
-/* Update by exact ID */
 function updateDoc(updated) {
   const docs = getDocs().map(d => (d.id === updated.id ? updated : d));
   saveDocs(docs);
 }
-
-/* Delete only ONE row by ID */
 function deleteOneById(id) {
   const docs = getDocs();
   const idx = docs.findIndex(d => d.id === id);
@@ -59,7 +52,7 @@ function deleteOneById(id) {
   }
 }
 
-/* ========= Elements ========= */
+/* ========= DOM Elements ========= */
 const btnForward = document.getElementById("btnForward");
 const btnReceive = document.getElementById("btnReceive");
 const btnTrack   = document.getElementById("btnTrack");
@@ -74,23 +67,35 @@ const formMsg     = document.getElementById("formMsg");
 const receiveForm = document.getElementById("receiveForm");
 const receiveMsg  = document.getElementById("receiveMsg");
 
-const searchDts     = document.getElementById("searchDts");
-const searchDetails = document.getElementById("searchDetails");
-const dateFrom      = document.getElementById("dateFrom");
-const dateTo        = document.getElementById("dateTo");
+const searchAll   = document.getElementById("searchAll");     // universal search
+const filterDate  = document.getElementById("filterDate");    // single date filter
 const resultsTbody  = document.querySelector("#resultsTable tbody");
 const thToOffice    = document.getElementById("thToOffice");
 const thDate        = document.getElementById("thDate");
 
 const toggleViewBtn = document.getElementById("toggleView");
 
-const printBtn   = document.getElementById("printResults");
+/* Print + Export buttons (open modals) */
+const printBtn   = document.getElementById("printBtn");
 const exportBtn  = document.getElementById("exportBtn");
-const exportSel  = document.getElementById("exportFormat");
+
+/* Print options modal */
+const printModal       = document.getElementById("printModal");
+const closePrintBtn    = document.getElementById("closePrint");
+const printSelectionBtn= document.getElementById("printSelection");
+const printAllBtn      = document.getElementById("printAll");
+
+/* Export options modal */
+const exportModal    = document.getElementById("exportModal");
+const closeExportBtn = document.getElementById("closeExport");
+
 const importCsv  = document.getElementById("importCsv");
-const clearBtn   = document.getElementById("clearFilters");
+
+/* Bulk delete */
 const deleteSelectedBtn = document.getElementById("deleteSelected");
 const selectAllCb = document.getElementById("selectAll");
+
+const clearBtn   = document.getElementById("clearFilters");
 
 /* Edit modal */
 const editModal         = document.getElementById("editModal");
@@ -129,7 +134,6 @@ let currentView = "forward"; // default
 
 function setView(kind) {
   currentView = kind;
-  // Update toggle text and table headers
   if (currentView === "forward") {
     toggleViewBtn.textContent = "View Received Documents";
     thToOffice.textContent = "To/Office";
@@ -139,7 +143,6 @@ function setView(kind) {
     thToOffice.textContent = "To/Office (—)";
     thDate.textContent = "Date Received";
   }
-  // Clear selection when switching views
   selectedIds.clear();
   renderTable();
 }
@@ -179,7 +182,7 @@ forwardForm.addEventListener("submit", (e) => {
     details: document.getElementById("details").value,
     receivedBy: document.getElementById("receivedBy").value,
     toOffice: document.getElementById("toOffice").value,
-    date: document.getElementById("dateForwarded").value, // generic date
+    date: document.getElementById("dateForwarded").value,
   };
 
   addDoc(record);
@@ -189,20 +192,18 @@ forwardForm.addEventListener("submit", (e) => {
   document.getElementById("dateForwarded").value = new Date().toISOString().slice(0, 10);
 });
 
-/* ========= Create (Receive) =========
-   NOTE: DTS field removed; dtsNo stored as empty string by default.
-*/
+/* ========= Create (Receive) ========= */
 receiveForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
   const record = {
     kind: "received",
     id: uid(),
-    dtsNo: "", // no DTS from form
+    dtsNo: "", // DTS omitted by design
     fromOffice: document.getElementById("rxFromOffice").value,
     details: document.getElementById("rxDetails").value,
     receivedBy: document.getElementById("rxReceivedBy").value,
-    toOffice: "", // not applicable
+    toOffice: "",
     date: document.getElementById("rxDate").value,
   };
 
@@ -214,22 +215,33 @@ receiveForm.addEventListener("submit", (e) => {
 });
 
 /* ========= Read / Filter / Render ========= */
+function normalize(s) { return (s ?? "").toString().toLowerCase(); }
+
 function matchesFilters(doc) {
   if (doc.kind !== currentView) return false;
 
-  const dtsMatch = searchDts.value ? String(doc.dtsNo || "").toLowerCase().includes(searchDts.value.toLowerCase()) : true;
-  const detailsMatch = searchDetails.value ? String(doc.details || "").toLowerCase().includes(searchDetails.value.toLowerCase()) : true;
+  const q = normalize(searchAll.value);
+  let textMatch = true;
+  if (q) {
+    const hay = [
+      doc.dtsNo, doc.fromOffice, doc.details, doc.receivedBy, doc.toOffice, doc.date
+    ].map(normalize).join(" | ");
+    textMatch = hay.includes(q);
+  }
 
   let dateMatch = true;
-  const docDate = doc.date || "1970-01-01";
-  if (dateFrom.value) dateMatch = new Date(docDate) >= new Date(dateFrom.value);
-  if (dateTo.value)   dateMatch = dateMatch && new Date(docDate) <= new Date(dateTo.value);
+  if (filterDate.value) dateMatch = (doc.date || "") === filterDate.value;
 
-  return dtsMatch && detailsMatch && dateMatch;
+  return textMatch && dateMatch;
 }
 
 function getFilteredDocs() {
   return getDocs().filter(matchesFilters);
+}
+function getSelectedDocs() {
+  const all = getFilteredDocs();
+  const ids = new Set(selectedIds);
+  return all.filter(d => ids.has(d.id));
 }
 
 function renderTable() {
@@ -245,7 +257,6 @@ function renderTable() {
   docs.forEach(doc => {
     const tr = document.createElement("tr");
     tr.dataset.id = doc.id;
-
     const isChecked = selectedIds.has(doc.id);
 
     tr.innerHTML = `
@@ -272,18 +283,16 @@ function renderTable() {
 /* Escape for safe HTML injection */
 function escapeHTML(s) {
   return String(s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
   }[c]));
 }
 
 /* Filters */
-[searchDts, searchDetails, dateFrom, dateTo].forEach(el => el.addEventListener("input", renderTable));
+[searchAll, filterDate].forEach(el => el.addEventListener("input", renderTable));
 
 clearBtn.addEventListener("click", () => {
-  searchDts.value = "";
-  searchDetails.value = "";
-  dateFrom.value = "";
-  dateTo.value = "";
+  searchAll.value = "";
+  filterDate.value = "";
   renderTable();
 });
 
@@ -357,7 +366,6 @@ function openEditModal(id) {
   editToOffice.value = doc.toOffice ?? "";
   editDate.value = doc.date ?? "";
 
-  // Adapt labels for received docs
   if (doc.kind === "received") {
     labelToOffice.style.display = "none";
     labelDate.firstChild.textContent = "Date Received";
@@ -375,10 +383,8 @@ closeEditBtn.addEventListener("click", closeEdit);
 cancelEditBtn.addEventListener("click", closeEdit);
 editModal.querySelector(".modal-backdrop").addEventListener("click", closeEdit);
 
-/* Save edits (minimal requirements, duplicates allowed) */
 editForm.addEventListener("submit", (e) => {
   e.preventDefault();
-
   const updated = {
     id: editId.value,
     kind: editKind.value || currentView,
@@ -389,15 +395,13 @@ editForm.addEventListener("submit", (e) => {
     toOffice: (editKind.value === "received") ? "" : editToOffice.value,
     date: editDate.value
   };
-
   updateDoc(updated);
   editMsg.textContent = "Changes saved.";
   editMsg.style.color = "#0f766e";
-
   setTimeout(() => { closeEdit(); renderTable(); }, 200);
 });
 
-/* Single delete via Actions column */
+/* Single delete via Actions column (per-ID only) */
 function handleDelete(id) {
   const docs = getDocs();
   const doc = docs.find(d => d.id === id);
@@ -409,35 +413,57 @@ function handleDelete(id) {
     d.id !== id
   ).length;
 
-  const message = sameDetailsCount > 0
-    ? `Delete this ${doc.kind} record only?\n\nDTS: ${doc.dtsNo ?? "(blank)"}\nDetails: ${doc.details ?? "(blank)"}\n\nNote: ${sameDetailsCount} other ${doc.kind} record(s) share the same details and WILL REMAIN.`
-    : `Delete this ${doc.kind} record?\n\nDTS: ${doc.dtsNo ?? "(blank)"}\nDetails: ${doc.details ?? "(blank)"}`;
+  const msg = sameDetailsCount > 0
+    ? `Delete this ${doc.kind} record only?\n\nDTS: ${doc.dtsNo || "(blank)"}\nDetails: ${doc.details || "(blank)"}\n\nNote: ${sameDetailsCount} other ${doc.kind} record(s) share the same details and WILL REMAIN.`
+    : `Delete this ${doc.kind} record?\n\nDTS: ${doc.dtsNo || "(blank)"}\nDetails: ${doc.details || "(blank)"}`;
 
-  if (!confirm(message)) return;
-
+  if (!confirm(msg)) return;
   deleteOneById(id);
   selectedIds.delete(id);
   renderTable();
 }
 
 /* ========= Export ========= */
-exportBtn.addEventListener("click", () => {
-  const fmt = exportSel.value;
-  const data = getFilteredDocs();
+exportBtn.addEventListener("click", () => openModal(exportModal));
+closeExportBtn.addEventListener("click", () => closeModal(exportModal));
+exportModal.querySelector(".modal-backdrop").addEventListener("click", () => closeModal(exportModal));
+exportModal.querySelectorAll("[data-fmt]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const fmt = btn.getAttribute("data-fmt");
+    const data = getFilteredDocs();
+    if (data.length === 0) { alert("No rows to export. Adjust your filters first."); return; }
 
-  if (data.length === 0) {
-    alert("No rows to export. Adjust your filters first.");
-    return;
-  }
-
-  const filenameBase = `documents_${currentView}_${new Date().toISOString().slice(0,10)}`;
-
-  if (fmt === "csv") return exportCSV(data, `${filenameBase}.csv`);
-  if (fmt === "excel") return exportExcel(data, `${filenameBase}.xls`);
-  if (fmt === "word") return exportWord(data, `${filenameBase}.doc`);
-  if (fmt === "pdf") return exportPDF(data, `${filenameBase}.pdf`);
+    const filenameBase = `documents_${currentView}_${new Date().toISOString().slice(0,10)}`;
+    if (fmt === "csv") exportCSV(data, `${filenameBase}.csv`);
+    if (fmt === "excel") exportExcel(data, `${filenameBase}.xls`);
+    if (fmt === "word") exportWord(data, `${filenameBase}.doc`);
+    if (fmt === "pdf") exportPDF(data, `${filenameBase}.pdf`);
+    closeModal(exportModal);
+  });
 });
 
+/* ========= Print ========= */
+printBtn.addEventListener("click", () => openModal(printModal));
+closePrintBtn.addEventListener("click", () => closeModal(printModal));
+printModal.querySelector(".modal-backdrop").addEventListener("click", () => closeModal(printModal));
+
+printSelectionBtn.addEventListener("click", () => {
+  const rows = getSelectedDocs();
+  if (rows.length === 0) { alert("No rows selected."); return; }
+  const title = (currentView === "forward" ? "Forwarded Documents" : "Received Documents") + " — Selected";
+  printRows(rows, title);
+  closeModal(printModal);
+});
+
+printAllBtn.addEventListener("click", () => {
+  const rows = getFilteredDocs();
+  if (rows.length === 0) { alert("No rows to print. Adjust your filters first."); return; }
+  const title = (currentView === "forward" ? "Forwarded Documents" : "Received Documents") + " — All (Filtered)";
+  printRows(rows, title);
+  closeModal(printModal);
+});
+
+/* ========= Export Helpers ========= */
 function exportCSV(rows, filename) {
   const header = ["id","kind","dtsNo","fromOffice","details","receivedBy","toOffice","date"];
   const escapeCell = (v) => {
@@ -446,11 +472,9 @@ function exportCSV(rows, filename) {
     return s;
   };
   const lines = [header.join(",")];
-  rows.forEach(r => {
-    lines.push(header.map(k => escapeCell(r[k])).join(","));
-  });
-  const csv = lines.join("\r\n");
-  downloadFile(filename, "text/csv;charset=utf-8", "\uFEFF" + csv);
+  rows.forEach(r => lines.push(header.map(k => escapeCell(r[k])).join(",")));
+  const csv = "\uFEFF" + lines.join("\r\n");
+  downloadFile(filename, "text/csv;charset=utf-8", csv);
 }
 
 function exportExcel(rows, filename) {
@@ -483,29 +507,87 @@ th{background:#eee}
 
 function exportPDF(rows) {
   const pop = window.open("", "_blank", "width=900,height=700");
-  const table = buildHTMLTable(rows, { border: 1 });
   const title = currentView === "forward" ? "Forwarded Documents" : "Received Documents";
+  const table = buildPrintTable(rows);
   pop.document.write(`<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8">
 <title>${title}</title>
 <style>
 @page { size: A4 portrait; margin: 10mm; }
-body{font-family:Arial,sans-serif;font-size:12px}
-h1{font-size:16px;margin:0 0 10px 0}
+body{font-family:Arial,sans-serif;font-size:16px;line-height:1.35}
+h1{font-size:20px;margin:0 0 14px 0}
 table{border-collapse:collapse;width:100%;table-layout:fixed}
-th,td{border:1px solid #999;padding:6px;vertical-align:top;word-break:break-word}
+th,td{border:1px solid #999;padding:12px;vertical-align:top;word-break:break-word}
 th{background:#eee}
+/* Signature INSIDE the "Received By" cell */
+.rb-cell{display:flex;flex-direction:column;gap:8px}
+.rb-name{font-weight:bold;font-size:16px}
+.rb-box{width:100%;height:30mm;border:1.6px solid #000;border-radius:4px}
+.rb-caption{font-size:13px;color:#222}
 </style>
 </head>
 <body>
 <h1>${title}</h1>
 ${table}
-<script>window.onload = () => { setTimeout(() => { window.print(); }, 100); }<\/script>
+<script>window.onload = () => { setTimeout(() => { window.print(); }, 120); }<\/script>
 </body></html>`);
   pop.document.close();
 }
 
+/* ========= Print Builders ========= */
+function printRows(rows, title) {
+  const table = buildPrintTable(rows);
+  const pop = window.open("", "_blank", "width=900,height=700");
+  pop.document.write(`<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<title>${escapeHTML(title)}</title>
+<style>
+@page { size: A4 portrait; margin: 10mm; }
+body{font-family:Arial,sans-serif;font-size:16px;line-height:1.35}
+h1{font-size:20px;margin:0 0 14px 0}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+th,td{border:1px solid #999;padding:12px;vertical-align:top;word-break:break-word}
+th{background:#eee}
+/* Signature INSIDE the "Received By" cell */
+.rb-cell{display:flex;flex-direction:column;gap:8px}
+.rb-name{font-weight:bold;font-size:16px}
+.rb-box{width:100%;height:30mm;border:1.6px solid #000;border-radius:4px}
+.rb-caption{font-size:13px;color:#222}
+</style>
+</head>
+<body>
+<h1>${escapeHTML(title)}</h1>
+${table}
+<script>window.onload = () => { setTimeout(() => { window.print(); }, 120); }<\/script>
+</body></html>`);
+  pop.document.close();
+}
+
+function buildPrintTable(rows) {
+  const headers = ["DTS Tracking No.","From/Office","Document Details","Received By","To/Office","Date"];
+  const thead = `<thead><tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join("")}</tr></thead>`;
+  const tbody = `<tbody>${rows.map(r => {
+    const rb = `
+      <div class="rb-cell">
+        <div class="rb-name">${escapeHTML(r.receivedBy ?? "")}</div>
+        <div class="rb-box"></div>
+        <div class="rb-caption">Receiver Signature / Name & Date</div>
+      </div>`;
+    return `<tr>
+      <td>${escapeHTML(r.dtsNo ?? "")}</td>
+      <td>${escapeHTML(r.fromOffice ?? "")}</td>
+      <td>${escapeHTML(r.details ?? "")}</td>
+      <td>${rb}</td>
+      <td>${escapeHTML(r.toOffice ?? "")}</td>
+      <td>${escapeHTML(r.date ?? "")}</td>
+    </tr>`;
+  }).join("")}</tbody>`;
+  return `<table>${thead}${tbody}</table>`;
+}
+
+/* Build plain HTML table (for Excel/Word/CSV) */
 function buildHTMLTable(rows, opts = {}) {
   const border = opts.border ? ` border="${opts.border}"` : "";
   const headers = ["Kind","DTS Tracking No.","From/Office","Document Details","Received By","To/Office","Date","ID"];
@@ -521,10 +603,8 @@ function downloadFile(filename, mime, content) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
 }
 
@@ -566,9 +646,7 @@ importCsv.addEventListener("change", async (e) => {
       if (!row || row.every(x => (x ?? "").trim() === "")) continue;
 
       let incomingId = val(row, mapCol.id) || "";
-      if (!incomingId || existingIds.has(incomingId)) {
-        incomingId = genUniqueId(existingIds);
-      }
+      if (!incomingId || existingIds.has(incomingId)) incomingId = genUniqueId(existingIds);
       existingIds.add(incomingId);
 
       const rec = {
@@ -629,10 +707,9 @@ function parseCSV(text) {
   return rows;
 }
 
-/* ========= Print ========= */
-printBtn.addEventListener("click", () => window.print());
-window.addEventListener("beforeprint", () => { renderTable(); document.body.classList.add("print-mode"); });
-window.addEventListener("afterprint",  () => document.body.classList.remove("print-mode"));
+/* ========= Utilities ========= */
+function openModal(m) { m.classList.remove("hidden"); }
+function closeModal(m) { m.classList.add("hidden"); }
 
 /* ========= Init ========= */
 btnForward.click();

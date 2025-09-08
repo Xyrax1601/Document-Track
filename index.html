@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Outgoing Documents Tracker</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <div class="app">
@@ -37,11 +37,10 @@
         <div id="formMsg" class="msg"></div>
       </section>
 
-      <!-- Receive Form (DTS field removed) -->
+      <!-- Receive Form (no DTS per request) -->
       <section id="receiveSection" class="section hidden">
         <h2>Receive Document</h2>
         <form id="receiveForm" novalidate>
-          <!-- DTS Tracking No. removed per request -->
           <label>From/Office<input type="text" id="rxFromOffice"></label>
           <label>Document Details<textarea id="rxDetails"></textarea></label>
           <label>Received By<input type="text" id="rxReceivedBy"></label>
@@ -59,22 +58,14 @@
         <h2>Track Document</h2>
 
         <div class="filters">
-          <input type="text" id="searchDts" placeholder="Search by DTS No.">
-          <input type="text" id="searchDetails" placeholder="Search by Document Details">
-          <input type="date" id="dateFrom">
-          <input type="date" id="dateTo">
+          <input type="text" id="searchAll" placeholder="Search all fields (DTS, From, Details, Received By, To, Date)">
+          <input type="date" id="filterDate" title="Filter by date">
 
           <button id="clearFilters" class="btn-ghost">Clear</button>
           <button id="toggleView" class="btn-ghost">View Received Documents</button>
-          <button id="printResults" class="btn-primary">Print</button>
 
-          <!-- Export + Import -->
-          <select id="exportFormat" class="select">
-            <option value="csv">CSV (.csv)</option>
-            <option value="excel">Excel (.xls)</option>
-            <option value="word">Word (.doc)</option>
-            <option value="pdf">PDF</option>
-          </select>
+          <!-- Action buttons (open popups) -->
+          <button id="printBtn" class="btn-primary">Print</button>
           <button id="exportBtn" class="btn-ghost">Export</button>
 
           <label class="btn-ghost file-label">
@@ -117,7 +108,6 @@
         <h3 id="editTitle">Edit Document</h3>
         <button id="closeEdit" class="icon-btn" aria-label="Close">&times;</button>
       </div>
-
       <form id="editForm" class="modal-body" novalidate>
         <input type="hidden" id="editId" />
         <input type="hidden" id="editKind" />
@@ -133,6 +123,38 @@
         </div>
         <div id="editMsg" class="msg"></div>
       </form>
+    </div>
+  </div>
+
+  <!-- Print Options Modal -->
+  <div id="printModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="printTitle">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3 id="printTitle">Print Options</h3>
+        <button id="closePrint" class="icon-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <button id="printSelection" class="btn-primary full">Print Selection</button>
+        <button id="printAll" class="btn-ghost full">Print All (Filtered)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Options Modal -->
+  <div id="exportModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3 id="exportTitle">Export Options</h3>
+        <button id="closeExport" class="icon-btn" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body grid-2">
+        <button data-fmt="csv" class="btn-primary">CSV</button>
+        <button data-fmt="excel" class="btn-primary">Excel</button>
+        <button data-fmt="word" class="btn-primary">Word</button>
+        <button data-fmt="pdf" class="btn-primary">PDF</button>
+      </div>
     </div>
   </div>
 

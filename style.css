@@ -1,96 +1,57 @@
-/* Global */
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f8f9fb;
-  color: #333;
-}
-
-/* Layout */
+/* Global Layout */
+body { margin: 0; font-family: Arial, sans-serif; background: #f8f9fb; color: #333; }
 .app { display: flex; height: 100vh; }
 
 .sidebar {
-  width: 220px;
-  background: #fff;
-  border-right: 1px solid #ddd;
-  padding: 1rem;
+  width: 220px; background: #fff; border-right: 1px solid #ddd; padding: 1rem;
 }
 .sidebar h1 { margin: 0; font-size: 1.2rem; }
-.sidebar .desc { font-size: 0.8rem; color: #666; margin-bottom: 1rem; }
+.sidebar .desc { font-size: 0.85rem; color: #666; margin: 0.25rem 0 1rem; }
 .nav-btn {
   display: block; width: 100%; margin-bottom: 0.5rem; padding: 0.75rem;
-  border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-weight: bold;
+  border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-weight: 600;
 }
-.nav-btn:hover { background: #f0f0f0; }
+.nav-btn:hover { background: #f1f5f9; }
 
 .content { flex: 1; padding: 1.5rem; overflow-y: auto; }
-
-/* Sections */
 .section h2 { margin-top: 0; }
 .hidden { display: none; }
 
-/* Form */
-form label { display: block; margin-bottom: 1rem; font-size: 0.9rem; }
+/* Forms */
+form label { display: block; margin-bottom: 1rem; font-size: 0.95rem; }
 form input, form textarea {
   width: 100%; padding: 0.5rem; margin-top: 0.25rem; border: 1px solid #ccc; border-radius: 4px;
 }
-.form-actions { margin-top: 1rem; display: flex; gap: 0.5rem; }
+.form-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
 
 /* Buttons */
-.btn-primary {
-  background: #2563eb; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;
-}
+.btn-primary { background: #2563eb; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
 .btn-primary:hover { background: #1e4ed8; }
-
-.btn-ghost {
-  background: white; border: 1px solid #ccc; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;
-}
-.btn-ghost:hover { background: #f9f9f9; }
-
-.btn-danger {
-  background: #b91c1c; color: #fff; border: 1px solid #b91c1c;
-  padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;
-}
+.btn-ghost { background: #fff; border: 1px solid #ccc; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+.btn-ghost:hover { background: #f9fafb; }
+.btn-danger { background: #b91c1c; color: #fff; border: 1px solid #b91c1c; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
 .btn-danger[disabled] { opacity: 0.5; cursor: not-allowed; }
-
-.icon-btn { background: transparent; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer; }
-.sm-btn { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
-.danger { border-color: #fca5a5; color: #b91c1c; }
 .select { padding: 0.5rem; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+.full { width: 100%; }
 
-/* File label (import CSV) */
-.file-label { position: relative; cursor: pointer; user-select: none; }
-.file-label input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-
-/* Filters (sticky toolbar) */
+/* Sticky filter bar */
 .filters {
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  align-items: center;
-  background: #f8f9fb;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #e5e7eb;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  position: sticky; top: 0; z-index: 50; display: flex; flex-wrap: wrap; gap: 0.5rem;
+  margin-bottom: 1rem; align-items: center; background: #f8f9fb; padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb; box-shadow: 0 2px 6px rgba(0,0,0,0.04);
 }
 
 /* Table */
 .table-container { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; background: white; }
+table { border-collapse: collapse; width: 100%; background: #fff; }
 th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; vertical-align: top; }
 th { background: #f3f4f6; }
 tr:hover { background: #f9fafb; }
+.select-col { width: 38px; text-align: center; }
 .no-print {}
 
-.select-col { width: 38px; text-align: center; }
-.row-check { width: 16px; height: 16px; cursor: pointer; }
-
-/* Status message */
-.msg { margin-top: 0.75rem; font-size: 0.9rem; color: #0f766e; }
+/* Messages */
+.msg { margin-top: 0.5rem; font-size: 0.95rem; color: #0f766e; }
 
 /* Modal */
 .modal { position: fixed; inset: 0; z-index: 1000; }
@@ -99,28 +60,30 @@ tr:hover { background: #f9fafb; }
   position: relative; background: #fff; width: min(700px, 92vw); margin: 6vh auto;
   border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden;
 }
+.modal-sm { width: min(420px, 92vw); }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between;
   background: #f3f4f6; padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb;
 }
 .modal-body { padding: 1rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.icon-btn { background: transparent; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer; }
 
-/* Print (A4 portrait, bigger text) */
+/* Print (fallback if user prints the main page) */
 @media print {
   @page { size: A4 portrait; margin: 10mm; }
-
-  .sidebar, .filters, #clearFilters, #printResults, .no-print, .modal {
-    display: none !important;
-  }
-
-  html, body { background: #fff !important; font-size: 12px !important; }
+  .sidebar, .filters, .no-print, .modal { display: none !important; }
+  html, body { background: #fff !important; font-size: 16px !important; line-height: 1.35 !important; }
   .content { padding: 0 !important; }
   .table-container { overflow: visible !important; }
-
-  table { width: 100% !important; table-layout: fixed !important; font-size: 12px !important; }
+  table { width: 100% !important; table-layout: fixed !important; font-size: 16px !important; }
   th, td {
-    padding: 6px 8px !important; border: 1px solid #ccc !important;
+    padding: 12px !important; border: 1px solid #ccc !important;
     white-space: normal !important; word-break: break-word; hyphens: auto;
   }
   tr:hover { background: transparent !important; }
 }
+
+/* File label (import CSV) */
+.file-label { position: relative; cursor: pointer; user-select: none; }
+.file-label input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
