@@ -287,6 +287,13 @@ function escapeHTML(s) {
   }[c]));
 }
 
+// Preserve line breaks/spaces from textarea when printing/exporting
+function formatMultilinePre(s) {
+  const safe = escapeHTML(s ?? "");
+  return `<pre class="prewrap">${safe}</pre>`;
+}
+
+
 /* Filters */
 [searchAll, filterDate].forEach(el => el.addEventListener("input", renderTable));
 
@@ -506,33 +513,10 @@ th{background:#eee}
 }
 
 function exportPDF(rows) {
-  const pop = window.open("", "_blank", "width=900,height=700");
   const title = currentView === "forward" ? "Forwarded Documents" : "Received Documents";
-  const table = buildPrintTable(rows);
-  pop.document.write(`<!DOCTYPE html>
-<html><head>
-<meta charset="UTF-8">
-<title>${title}</title>
-<style>
-@page { size: A4 portrait; margin: 10mm; }
-body{font-family:Arial,sans-serif;font-size:16px;line-height:1.35}
-h1{font-size:20px;margin:0 0 14px 0}
-table{border-collapse:collapse;width:100%;table-layout:fixed}
-th,td{border:1px solid #999;padding:12px;vertical-align:top;word-break:break-word}
-th{background:#eee}
-/* Signature INSIDE the "Received By" cell */
-.rb-cell{display:flex;flex-direction:column;gap:8px}
-.rb-name{font-weight:bold;font-size:16px}
-.rb-box{width:100%;height:30mm;border:1.6px solid #000;border-radius:4px}
-.rb-caption{font-size:13px;color:#222}
-</style>
-</head>
-<body>
-<h1>${title}</h1>
-${table}
-<script>window.onload = () => { setTimeout(() => { window.print(); }, 120); }<\/script>
-</body></html>`);
-  pop.document.close();
+  // Use the same print layout rules to ensure To/Office and Date stay one-line and
+  // the Date always fits inside the table cell.
+  printRows(rows, title);
 }
 
 /* ========= Print Builders ========= */
@@ -545,16 +529,23 @@ function printRows(rows, title) {
 <title>${escapeHTML(title)}</title>
 <style>
 @page { size: A4 portrait; margin: 10mm; }
-body{font-family:Arial,sans-serif;font-size:16px;line-height:1.35}
-h1{font-size:20px;margin:0 0 14px 0}
+body{font-family:Arial,sans-serif;font-size:13px;line-height:1.35;color:#111}
+h1{font-size:16px;margin:0 0 10px 0;text-align:center;letter-spacing:.2px}
 table{border-collapse:collapse;width:100%;table-layout:fixed}
-th,td{border:1px solid #999;padding:12px;vertical-align:top;word-break:break-word}
-th{background:#eee}
+th,td{border:1px solid #999;padding:6px 8px;vertical-align:top;font-size:11.5px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+th{background:#eee;font-size:12px}
+.nowrap{white-space:nowrap}
+.dts-col{white-space:normal;font-size:11.5px}
+.tooffice-col{font-size:11.5px}
+.date-col{text-align:center;white-space:nowrap;font-size:11px}
 /* Signature INSIDE the "Received By" cell */
 .rb-cell{display:flex;flex-direction:column;gap:8px}
-.rb-name{font-weight:bold;font-size:16px}
-.rb-box{width:100%;height:30mm;border:1.6px solid #000;border-radius:4px}
-.rb-caption{font-size:13px;color:#222}
+.rb-name{font-weight:bold;font-size:12px}
+.rb-box{width:100%;height:24mm;border:1.4px solid #000;border-radius:4px}
+.rb-caption{font-size:11px;color:#222}
+/* Preserve multi-line formatting in Document Details */
+.prewrap{white-space:pre-wrap;margin:0;font-family:inherit}
+.details-cell{white-space:normal}
 </style>
 </head>
 <body>
@@ -566,8 +557,16 @@ ${table}
 }
 
 function buildPrintTable(rows) {
-  const headers = ["DTS Tracking No.","From/Office","Document Details","Received By","To/Office","Date"];
-  const thead = `<thead><tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join("")}</tr></thead>`;
+  const headers = [
+    { label: "DTS Tracking No.", cls: "dts-col" },
+    { label: "From/Office", cls: "" },
+    { label: "Document Details", cls: "" },
+    { label: "Received By", cls: "" },
+    { label: "To/Office", cls: "nowrap" },
+    { label: "Date", cls: "nowrap" },
+  ];
+
+  const thead = `<thead><tr>${headers.map(h => `<th class="${h.cls}">${escapeHTML(h.label)}</th>`).join("")}</tr></thead>`;
   const tbody = `<tbody>${rows.map(r => {
     const rb = `
       <div class="rb-cell">
@@ -576,15 +575,46 @@ function buildPrintTable(rows) {
         <div class="rb-caption">Receiver Signature / Name & Date</div>
       </div>`;
     return `<tr>
-      <td>${escapeHTML(r.dtsNo ?? "")}</td>
+      <td class="dts-col">${escapeHTML(r.dtsNo ?? "")}</td>
       <td>${escapeHTML(r.fromOffice ?? "")}</td>
-      <td>${escapeHTML(r.details ?? "")}</td>
+      <td class="details-cell">${formatMultilinePre(r.details ?? "")}</td>
       <td>${rb}</td>
-      <td>${escapeHTML(r.toOffice ?? "")}</td>
-      <td>${escapeHTML(r.date ?? "")}</td>
+      <td class="tooffice-col">${escapeHTML(r.toOffice ?? "")}</td>
+      <td class="date-col">${escapeHTML(formatDateForPrint(r.date ?? ""))}</td>
     </tr>`;
   }).join("")}</tbody>`;
-  return `<table>${thead}${tbody}</table>`;
+
+  // Wider To/Office + Date to guarantee one-line fit and keep content inside the table borders.
+  const colgroup = `<colgroup>`
+    + `<col style="width:18%">`
+    + `<col style="width:15%">`
+    + `<col style="width:26%">`
+    + `<col style="width:17%">`
+    + `<col style="width:14%">`
+    + `<col style="width:10%">`
+    + `</colgroup>`;
+  return `<table>${colgroup}${thead}${tbody}</table>`;
+}
+
+// Print-safe, guaranteed short date (keeps content within the table cell)
+function formatDateForPrint(dateStr) {
+  const s = (dateStr ?? "").toString().trim();
+  if (!s) return "";
+
+  // If already ISO-like (YYYY-MM-DD...), keep the first 10 chars.
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+
+  // Try parsing other formats and normalize to YYYY-MM-DD.
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // Fallback: use a short trimmed string (prevents overflow in print)
+  return s.length > 16 ? s.slice(0, 16) : s;
 }
 
 /* Build plain HTML table (for Excel/Word/CSV) */
