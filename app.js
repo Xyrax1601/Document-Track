@@ -57,6 +57,8 @@ const btnForward = document.getElementById("btnForward");
 const btnReceive = document.getElementById("btnReceive");
 const btnTrack   = document.getElementById("btnTrack");
 
+const themeToggleBtn = document.getElementById("themeToggle");
+
 const forwardSection = document.getElementById("forwardSection");
 const receiveSection = document.getElementById("receiveSection");
 const trackSection   = document.getElementById("trackSection");
@@ -112,6 +114,50 @@ const editReceivedBy    = document.getElementById("editReceivedBy");
 const editToOffice      = document.getElementById("editToOffice");
 const editDate          = document.getElementById("editDate");
 const labelToOffice     = document.getElementById("labelToOffice");
+/* ========= Theme (Light / Dark) ========= */
+const THEME_KEY = "dts_theme"; // persisted in localStorage
+
+function getSystemTheme() {
+  try {
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  } catch (_) {
+    return "light";
+  }
+}
+
+function applyTheme(theme) {
+  const t = (theme === "dark") ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", t);
+
+  // Button label shows the *next* action, like a typical UI toggle.
+  if (themeToggleBtn) themeToggleBtn.textContent = (t === "dark") ? "Light Mode" : "Dark Mode";
+}
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  applyTheme(saved || getSystemTheme());
+
+  // If user has NOT chosen a theme yet, follow OS changes automatically.
+  try {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    mq.addEventListener("change", (e) => {
+      if (!localStorage.getItem(THEME_KEY)) applyTheme(e.matches ? "dark" : "light");
+    });
+  } catch (_) {}
+}
+
+if (themeToggleBtn) {
+  themeToggleBtn.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || "light";
+    const next = (current === "dark") ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, next);
+    applyTheme(next);
+  });
+}
+
+// Apply theme ASAP on load.
+initTheme();
+
 const labelDate         = document.getElementById("labelDate");
 
 /* ========= Selection State ========= */
@@ -588,9 +634,9 @@ function buildPrintTable(rows) {
   const colgroup = `<colgroup>`
     + `<col style="width:18%">`
     + `<col style="width:15%">`
-    + `<col style="width:26%">`
+    + `<col style="width:25%">`
     + `<col style="width:17%">`
-    + `<col style="width:14%">`
+    + `<col style="width:15%">`
     + `<col style="width:10%">`
     + `</colgroup>`;
   return `<table>${colgroup}${thead}${tbody}</table>`;
